@@ -16,13 +16,13 @@
 #define SLAB_MD sizeof(slab_md_t)
 
 #if ENABLE_HUGEPAGE
-static void *__slab_lowlevel_calloc(int private)
+static void *__slab_lowlevel_calloc(int _private)
 {
         int ret;
         void *ptr;
         uint32_t size = SLAB_SEG;
 
-        (void) private;
+        (void) _private;
 
         ret = hugepage_getfree(&ptr, &size, __FUNCTION__);
         if (ret)
@@ -32,10 +32,10 @@ static void *__slab_lowlevel_calloc(int private)
 }
 
 #if 0
-static void __slab_lowlevel_free(void *ptr, int private)
+static void __slab_lowlevel_free(void *ptr, int _private)
 {
         (void) ptr;
-        (void) private;
+        (void) _private;
 
         UNIMPLEMENTED(__DUMP__);
 }
@@ -43,12 +43,12 @@ static void __slab_lowlevel_free(void *ptr, int private)
 
 #else
 
-static void *__slab_lowlevel_calloc(int private)
+static void *__slab_lowlevel_calloc(int _private)
 {
         int ret;
         void *ptr;
 
-        (void) private;
+        (void) _private;
         
         ret = ltg_malloc(&ptr, SLAB_SEG);
         if (ret)
@@ -58,9 +58,9 @@ static void *__slab_lowlevel_calloc(int private)
 }
 
 #if 0
-static void __slab_lowlevel_free(void *ptr, int private)
+static void __slab_lowlevel_free(void *ptr, int _private)
 {
-        (void) private;
+        (void) _private;
 
         ltg_free(&ptr);
 }
@@ -69,13 +69,13 @@ static void __slab_lowlevel_free(void *ptr, int private)
 #endif
 
 static int __slab_init__(const char *name, slab_bucket_t *slab, int split,
-                         pid_t tid, int private)
+                         pid_t tid, int _private)
 {
         memset(slab, 0x0, sizeof(*slab));
 
         slab->split = split;
         slab->tid = tid;
-        slab->private = private;
+        slab->_private = _private;
         INIT_LIST_HEAD(&slab->list);
         INIT_LIST_HEAD(&slab->used);
         strcpy(slab->name, name);
@@ -85,7 +85,7 @@ static int __slab_init__(const char *name, slab_bucket_t *slab, int split,
         return 0;
 }
 
-static int __slab_init(const char *name, slab_array_t **_array, int private,
+static int __slab_init(const char *name, slab_array_t **_array, int _private,
                        int min, int shift, uint32_t magic)
 {
         int ret;
@@ -94,7 +94,7 @@ static int __slab_init(const char *name, slab_array_t **_array, int private,
 
         LTG_ASSERT(size <= SLAB_SEG);
 
-        array = __slab_lowlevel_calloc(private);
+        array = __slab_lowlevel_calloc(_private);
         if (array == NULL) {
                 ret = ENOMEM;
                 GOTO(err_ret, ret);
@@ -102,7 +102,7 @@ static int __slab_init(const char *name, slab_array_t **_array, int private,
 
         array->count = shift;
         array->magic = magic;
-        if (private) {
+        if (_private) {
                 core_t *core = core_self();
                 array->coreid = core->hash;
                 array->tid = __gettid();
@@ -118,7 +118,7 @@ static int __slab_init(const char *name, slab_array_t **_array, int private,
         for (int i = 0; i < shift; i++) {
                 slab_bucket_t *mem = &array->slab_bucket[i];
                 ret = __slab_init__(name, mem, min * (1 << i),
-                                    array->tid, private);
+                                    array->tid, _private);
                 if (ret)
                         GOTO(err_ret, ret);
         }
@@ -130,7 +130,7 @@ err_ret:
         return ret;
 }
 
-int slab_private_init(const char *name, slab_t **_slab, slab_array_t *public, int min,
+int slab_private_init(const char *name, slab_t **_slab, slab_array_t *_public, int min,
                       int shift, uint32_t magic)
 {
         int ret;
@@ -142,11 +142,11 @@ int slab_private_init(const char *name, slab_t **_slab, slab_array_t *public, in
 
         memset(slab, 0x0, sizeof(*slab));
         
-        ret = __slab_init(name, &slab->private, 1, min, shift, magic);
+        ret = __slab_init(name, &slab->_private, 1, min, shift, magic);
         if (ret)
                 GOTO(err_ret, ret);
 
-        slab->public = public;
+        slab->_public = _public;
         slab->max = min * (1 << shift);
         *_slab = slab;
         
@@ -167,12 +167,12 @@ int slab_init(const char *name, slab_t **_slab, slab_array_t **_public, int min,
 
         memset(slab, 0x0, sizeof(*slab));
         
-        ret = __slab_init(name, &slab->public, 0, min, shift, magic);
+        ret = __slab_init(name, &slab->_public, 0, min, shift, magic);
         if (ret)
                 GOTO(err_ret, ret);
 
         slab->max = min * (1 << shift);
-        *_public = slab->public;
+        *_public = slab->_public;
         *_slab = slab;
         
         return 0;
@@ -266,13 +266,13 @@ void *slab_alloc_glob(slab_t *slab, size_t size)
 
         LTG_ASSERT(size <= slab->max);
 
-        ret = ltg_spin_lock(&slab->public->spin);
+        ret = ltg_spin_lock(&slab->_public->spin);
         if (ret)
                 GOTO(err_ret, ret);
 
-        ptr = __slab_alloc(slab->public, size);
+        ptr = __slab_alloc(slab->_public, size);
 
-        ltg_spin_unlock(&slab->public->spin);
+        ltg_spin_unlock(&slab->_public->spin);
 
         return ptr;
 err_ret:
@@ -286,16 +286,16 @@ void S_LTG *slab_alloc(slab_t *slab, size_t size)
 
         LTG_ASSERT(size <= slab->max);
 
-        if (likely(slab->private)) {
-                ptr =  __slab_alloc(slab->private, size);
+        if (likely(slab->_private)) {
+                ptr =  __slab_alloc(slab->_private, size);
         } else {
-                ret = ltg_spin_lock(&slab->public->spin);
+                ret = ltg_spin_lock(&slab->_public->spin);
                 if (ret)
                         GOTO(err_ret, ret);
 
-                ptr = __slab_alloc(slab->public, size);
+                ptr = __slab_alloc(slab->_public, size);
 
-                ltg_spin_unlock(&slab->public->spin);
+                ltg_spin_unlock(&slab->_public->spin);
         }
 
         return ptr;
@@ -308,7 +308,7 @@ void S_LTG __slab_free_local(void *ptr)
         slab_md_t *md = ptr - SLAB_MD;
         slab_bucket_t *slab_bucket = md->slab_bucket;
 
-        LTG_ASSERT(slab_bucket->private);
+        LTG_ASSERT(slab_bucket->_private);
 
         list_del(&md->hook);
         list_add_tail(&md->hook, &slab_bucket->list);
@@ -320,16 +320,16 @@ void S_LTG __slab_free_public(slab_t *slab, void *ptr)
         slab_md_t *md = ptr - SLAB_MD;
         slab_bucket_t *slab_bucket = md->slab_bucket;
 
-        LTG_ASSERT(slab_bucket->private == 0);
+        LTG_ASSERT(slab_bucket->_private == 0);
 
-        ret = ltg_spin_lock(&slab->public->spin);
+        ret = ltg_spin_lock(&slab->_public->spin);
         if (ret)
                 UNIMPLEMENTED(__DUMP__);
 
         list_del(&md->hook);
         list_add_tail(&md->hook, &slab_bucket->list);
 
-        ltg_spin_unlock(&slab->public->spin);
+        ltg_spin_unlock(&slab->_public->spin);
 }
 
 static int __slab_cross_free_va(va_list ap)
@@ -337,7 +337,7 @@ static int __slab_cross_free_va(va_list ap)
         void *ptr = va_arg(ap, void *);
         slab_md_t *md = ptr - SLAB_MD;
 
-        LTG_ASSERT(md->slab_bucket->private);
+        LTG_ASSERT(md->slab_bucket->_private);
 
         va_end(ap);
 
@@ -350,14 +350,14 @@ void S_LTG slab_free(slab_t *slab, void *ptr)
 {
         slab_md_t *md = ptr - SLAB_MD;
 
-        if (likely(slab->private && md->coreid == slab->private->coreid)) {
-                slab_array_t *array = slab->private;
+        if (likely(slab->_private && md->coreid == slab->_private->coreid)) {
+                slab_array_t *array = slab->_private;
                 LTG_ASSERT(md->magic == array->magic);
                 LTG_ASSERT(md->slab_bucket->tid == array->tid);
 
                 __slab_free_local(ptr);
-        } else if (!md->slab_bucket->private) {
-                slab_array_t *array = slab->public;
+        } else if (!md->slab_bucket->_private) {
+                slab_array_t *array = slab->_public;
                 LTG_ASSERT(md->magic == array->magic);
                 LTG_ASSERT(md->slab_bucket->tid == array->tid);
                 
@@ -365,7 +365,7 @@ void S_LTG slab_free(slab_t *slab, void *ptr)
         } else {
                 DBUG("cross free %p\n", ptr);
 
-                //slab_array_t *array = slab->private;
+                //slab_array_t *array = slab->_private;
                 //LTG_ASSERT(md->magic == array->magic);
                 //LTG_ASSERT(md->slab_bucket->tid == array->tid);
 

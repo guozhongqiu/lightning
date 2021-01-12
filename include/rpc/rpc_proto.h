@@ -30,7 +30,7 @@ inline static void S_LTG request_trans(void *arg, coreid_t *dist,
 {
         rpc_request_t *rpc_request;
 
-        rpc_request = arg;
+        rpc_request = (rpc_request_t *)arg;
         ltgbuf_init(buf, 0);
         ltgbuf_merge(buf, &rpc_request->buf);
         *msgid = rpc_request->msgid;

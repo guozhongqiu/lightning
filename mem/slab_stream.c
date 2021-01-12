@@ -39,7 +39,7 @@ inline static void __slab_scan(void *_core, void *var, void *_slab)
 
         slab_t *slab = _slab;
 
-        slab_scan(_core, slab->private);
+        slab_scan(_core, slab->_private);
         
         return;
 }

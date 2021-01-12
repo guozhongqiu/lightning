@@ -19,7 +19,7 @@ static int __rpc_table_used(rpc_table_t *rpc_table, slot_t *slot)
 {
         int ret;
 
-        if (likely(rpc_table->private)) {
+        if (likely(rpc_table->_private)) {
                 return pspin_locked(&slot->used_pspin);
         } else {
                 ret = ltg_spin_trylock(&slot->used_spin);
@@ -36,7 +36,7 @@ static int __rpc_table_used(rpc_table_t *rpc_table, slot_t *slot)
 
 static int __rpc_table_use(rpc_table_t *rpc_table, slot_t *slot)
 {
-        if (likely(rpc_table->private)) {
+        if (likely(rpc_table->_private)) {
                 return pspin_trylock(&slot->used_pspin);
         } else {
                 return ltg_spin_trylock(&slot->used_spin);
@@ -51,7 +51,7 @@ static void __rpc_table_free(rpc_table_t *rpc_table, slot_t *slot)
         slot->figerprint_prev = slot->msgid.figerprint;
         slot->msgid.figerprint = 0;
 
-        if (likely(rpc_table->private)) {
+        if (likely(rpc_table->_private)) {
                 pspin_unlock(&slot->used_pspin);
         } else {
                 ltg_spin_unlock(&slot->used_spin);
@@ -62,7 +62,7 @@ static void __rpc_table_free(rpc_table_t *rpc_table, slot_t *slot)
 
 static int __rpc_table_lock(rpc_table_t *rpc_table, slot_t *slot)
 {
-        if (likely(rpc_table->private))
+        if (likely(rpc_table->_private))
                 return 0;
         else
                 return ltg_spin_lock(&slot->lock);
@@ -70,7 +70,7 @@ static int __rpc_table_lock(rpc_table_t *rpc_table, slot_t *slot)
 
 static int __rpc_table_trylock(rpc_table_t *rpc_table, slot_t *slot)
 {
-        if (likely(rpc_table->private))
+        if (likely(rpc_table->_private))
                 return 0;
         else
                 return ltg_spin_trylock(&slot->lock);
@@ -78,7 +78,7 @@ static int __rpc_table_trylock(rpc_table_t *rpc_table, slot_t *slot)
 
 static int __rpc_table_unlock(rpc_table_t *rpc_table, slot_t *slot)
 {
-        if (likely(rpc_table->private))
+        if (likely(rpc_table->_private))
                 return 0;
         else
                 return ltg_spin_unlock(&slot->lock);
@@ -514,14 +514,14 @@ void  rpc_table_reset(rpc_table_t *rpc_table, const sockid_t *sockid, const nid_
 }
 
 static int __rpc_table_create(const char *name, int count, int tabid,
-                              int private, rpc_table_t **_rpc_table)
+                              int _private, rpc_table_t **_rpc_table)
 {
         int ret, i;
         slot_t *slot;
         rpc_table_t *rpc_table;
 
         uint32_t size = sizeof(rpc_table_t) + sizeof(slot_t *) * count;
-        if (private) {
+        if (_private) {
                 ret = slab_static_alloc1((void **)&rpc_table, size);
         } else {
                 ret = ltg_malloc((void **)&rpc_table, size);
@@ -530,7 +530,7 @@ static int __rpc_table_create(const char *name, int count, int tabid,
                 GOTO(err_ret, ret);
 
         for (i = 0; i < count; i++) {
-                if (private) {
+                if (_private) {
                         ret = slab_static_alloc1((void **)&slot, sizeof(*slot));
                 } else {
                         ret = ltg_malloc((void **)&slot, sizeof(*slot));
@@ -542,7 +542,7 @@ static int __rpc_table_create(const char *name, int count, int tabid,
                 if (unlikely(ret))
                         GOTO(err_ret, ret);
 
-                if (private) {
+                if (_private) {
                         ret = pspin_init(&slot->used_pspin);
                 } else {
                         ret = ltg_spin_init(&slot->used_spin);
@@ -567,7 +567,7 @@ static int __rpc_table_create(const char *name, int count, int tabid,
         rpc_table->count = count;
         rpc_table->tabid = tabid;
         rpc_table->last_scan = 0;
-        rpc_table->private = private;
+        rpc_table->_private = _private;
         *_rpc_table = rpc_table;
 
         return 0;
@@ -575,17 +575,17 @@ err_ret:
         return ret;
 }
 
-int rpc_table_init(const char *name, rpc_table_t **rpc_table, int private)
+int rpc_table_init(const char *name, rpc_table_t **rpc_table, int _private)
 {
         int ret, count;
         rpc_table_t *tmp;
 
         count = RPC_TABLE_MAX;
-        ret = __rpc_table_create(name, count, 0, private, &tmp);
+        ret = __rpc_table_create(name, count, 0, _private, &tmp);
         if (unlikely(ret))
                 GOTO(err_ret, ret);
 
-        if (!private) {
+        if (!_private) {
                 pthread_t th;
                 pthread_attr_t ta;
 
@@ -624,7 +624,7 @@ void rpc_table_destroy(rpc_table_t **_rpc_table)
                 UNIMPLEMENTED(__DUMP__);
         }
 
-        if (rpc_table->private) {
+        if (rpc_table->_private) {
                 slab_static_free1((void **)&rpc_table);
         } else {
                 ltg_free((void **)&rpc_table);

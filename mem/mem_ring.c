@@ -260,7 +260,7 @@ int mem_ring_new(uint32_t *size, mem_handler_t *mem_handler)
         core_t *core = core_self();
 
         if (unlikely(__mem_ring_private__ == NULL)) {
-public:
+_public:
                 head = __mem_ring__;
                 ret = ltg_spin_lock(&head->lock);
                 if (unlikely(ret))
@@ -280,7 +280,7 @@ public:
                 ret = __mem_ring_new(head, size, mem_handler);
                 if (unlikely(ret)) {
                         DINFO("%s[%s] no mem, use public\n", core->name, core->hash);
-                        goto public;
+                        goto _public;
                 }
 
         }

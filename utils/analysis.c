@@ -20,7 +20,7 @@ typedef struct {
 
 struct {
         struct list_head list;
-        int private;
+        int _private;
         ltg_spinlock_t lock;
         sem_t sem;
         int inited;
@@ -35,7 +35,7 @@ static int __analysis_count(analysis_t *ana, const char *name, uint64_t _time)
 
         DBUG("count %s time %llu\n", name, (LLU)_time);
 
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ret = ltg_spin_lock(&ana->tab_lock);
                 if (unlikely(ret))
                         GOTO(err_ret, ret);
@@ -63,13 +63,13 @@ static int __analysis_count(analysis_t *ana, const char *name, uint64_t _time)
 
         DBUG("%s: (%s, count)\n", ana->name, ent->name, ent->count);
         
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ltg_spin_unlock(&ana->tab_lock);
         }
 
         return 0;
 err_lock:
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ltg_spin_unlock(&ana->tab_lock);
         }
 err_ret:
@@ -99,7 +99,7 @@ int analysis_queue(analysis_t *ana, const char *_name, const char *type, uint64_
                 name = _name;
         }
 
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ret = ltg_spin_trylock(&ana->queue_lock);
                 if (unlikely(ret)) {
                         if (ret == EBUSY) {
@@ -113,7 +113,7 @@ int analysis_queue(analysis_t *ana, const char *_name, const char *type, uint64_
         LTG_ASSERT(ana->queue->count <= ANALYSIS_QUEUE_MAX);
 
         if (ana->queue->count == ANALYSIS_QUEUE_MAX) {
-                if (unlikely(!ana->private)) {
+                if (unlikely(!ana->_private)) {
                         ltg_spin_unlock(&ana->queue_lock);
                         sem_post(&analysis_list.sem);
                 }
@@ -129,7 +129,7 @@ int analysis_queue(analysis_t *ana, const char *_name, const char *type, uint64_
 
         DBUG("ana %s count %u event %s\n", ana->name, ana->queue->count, _name);
         
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ltg_spin_unlock(&ana->queue_lock);
         }
 
@@ -212,7 +212,7 @@ static int __analysis__(analysis_t *ana, int *count)
         
         ANALYSIS_BEGIN(0);
 
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ret = ltg_spin_lock(&ana->queue_lock);
                 if (unlikely(ret))
                         GOTO(err_ret, ret);
@@ -222,7 +222,7 @@ static int __analysis__(analysis_t *ana, int *count)
         ana->queue = ana->new_queue;
         ana->new_queue = tmp;
 
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ltg_spin_unlock(&ana->queue_lock);
         }
 
@@ -333,7 +333,7 @@ err_ret:
         return ret;
 }
 
-int analysis_create(analysis_t **_ana, const char *_name, int private)
+int analysis_create(analysis_t **_ana, const char *_name, int _private)
 {
         int ret;
         char name[MAX_NAME_LEN];
@@ -370,9 +370,9 @@ int analysis_create(analysis_t **_ana, const char *_name, int private)
                 GOTO(err_ret, ret);
 
         ana->new_queue->count = 0;
-        ana->private = private;
+        ana->_private = _private;
 
-        if (unlikely(!ana->private)) {
+        if (unlikely(!ana->_private)) {
                 ret = ltg_spin_init(&ana->queue_lock);
                 if (unlikely(ret))
                         GOTO(err_ret, ret);

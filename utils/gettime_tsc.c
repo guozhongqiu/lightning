@@ -62,9 +62,9 @@ static uint64_t __get_cpu_freq(void)
 
 }
 
-inline uint64_t _microsec_used(uint64_t old, uint64_t new, uint64_t hz)
+inline uint64_t _microsec_used(uint64_t old, uint64_t _new, uint64_t hz)
 {
-        return (new - old) * 1000 * 1000/ hz;
+        return (_new - old) * 1000 * 1000/ hz;
 }
 
 uint64_t cpu_freq_init()

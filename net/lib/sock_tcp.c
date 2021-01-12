@@ -542,21 +542,21 @@ int tcp_sock_getaddr(uint32_t *info_count, sock_info_t *info,
                      uint32_t info_count_max, uint32_t port,
                      const ltg_netconf_t *filter)
 {
-        int ret, i, new = 32;
-        uint32_t addr[new], count;
+        int ret, i, _new = 32;
+        uint32_t addr[_new], count;
 
         count = 0;
         for (i = 0; i < filter->count; i++) {
                 LTG_ASSERT(count < info_count_max);
                 ret = __tcp_sock_getaddr(filter->network[i].network,
-                                         filter->network[i].mask, addr, &new);
+                                         filter->network[i].mask, addr, &_new);
                 if (unlikely(ret)) {
                         continue;
                 }
 
                 DBUG("info[%u] addr %u\n", count, addr);
 
-                for (int j = 0; j < new; j++) {
+                for (int j = 0; j < _new; j++) {
                         info[count].addr = addr[j];
                         info[count].port = htons(port);
                         count++;

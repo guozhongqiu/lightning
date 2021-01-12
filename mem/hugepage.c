@@ -142,9 +142,9 @@ void *hugepage_private_init(int hash, int sockid)
         return head;
 }
 
-static void __hugepage_init_public(hugepage_head_t *head, void *public)
+static void __hugepage_init_public(hugepage_head_t *head, void *_public)
 {
-        void *pos = public;
+        void *pos = _public;
 
         DINFO("hp_count %d\n", PUBLIC_HP_COUNT);
 
@@ -158,9 +158,9 @@ static void __hugepage_init_public(hugepage_head_t *head, void *public)
         HUGEPAGE_HEAD_DUMP_L(DINFO, head, "\n");
 }
 
-static void __hugepage_init_private(hugepage_head_t *head, void *private)
+static void __hugepage_init_private(hugepage_head_t *head, void *_private)
 {
-        void *pos = private;
+        void *pos = _private;
         
         for (int i = 0; i < CORE_MAX; i++) {
                 if (!core_used(i)) {
@@ -179,7 +179,7 @@ int hugepage_init(int daemon, uint64_t coremask, int nr_hugepage)
 { 
         int ret, hp_count, poll_num = 0;
         size_t mem_size;
-        void *mem, *addr, *private, *public;
+        void *mem, *addr, *_private, *_public;
         size_t align;
         hugepage_head_t *head;
 
@@ -242,15 +242,15 @@ int hugepage_init(int daemon, uint64_t coremask, int nr_hugepage)
                 GOTO(err_ret, ret);
 
         head = addr;
-        public = addr + HUGEPAGE_SIZE;
-        private = public + (PUBLIC_HP_COUNT) * HUGEPAGE_SIZE;
+        _public = addr + HUGEPAGE_SIZE;
+        _private = _public + (PUBLIC_HP_COUNT) * HUGEPAGE_SIZE;
 
         __hugepage_head_init(head, mem, addr, hp_count - 1, -1);
 
-        __hugepage_init_public(head, public);
+        __hugepage_init_public(head, _public);
         hugepage_alloc_ops->init((void *)head + sizeof(*head), PUBLIC_HP_COUNT);
 
-        __hugepage_init_private(head, private);
+        __hugepage_init_private(head, _private);
 
         return 0;
 err_ret:

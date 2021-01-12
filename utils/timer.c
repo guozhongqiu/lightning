@@ -36,7 +36,7 @@ typedef struct {
         int thread;
         int maxlevel;
         int chunksize;
-        int private;
+        int _private;
         group_t group;
 } ltimer_t;
 
@@ -232,7 +232,7 @@ static void *__timer_expire(void *_args)
 }
 
 
-int timer_init(int private)
+int timer_init(int _private)
 {
         int ret, len;
         void *ptr;
@@ -253,7 +253,7 @@ int timer_init(int private)
         _timer->max = (unsigned long long)-1;
         _timer->maxlevel = SKIPLIST_MAX_LEVEL;
         _timer->chunksize = SKIPLIST_CHKSIZE_DEF;
-        _timer->private = private;
+        _timer->_private = _private;
 
         group = &_timer->group;
         ret = skiplist_create(__timer_cmp, _timer->maxlevel, _timer->chunksize,
@@ -264,7 +264,7 @@ int timer_init(int private)
 
         group->count = 0;
 
-        if (private) {
+        if (_private) {
                 _timer->thread = sche_getid();
                 core_tls_set(VARIABLE_TIMER, _timer);
         } else {
@@ -357,7 +357,7 @@ int timer_insert(const char *name, void *ctx, func_t func, suseconds_t usec)
         }
 
         group = &timer->group;
-        if (unlikely(!timer->private)) {
+        if (unlikely(!timer->_private)) {
                 ret = ltg_spin_lock(&group->lock);
                 if (unlikely(ret))
                         GOTO(err_ret, ret);

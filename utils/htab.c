@@ -92,7 +92,7 @@ htab_t htab_create(int (*compare_func)(const void *, const void *),
         int ret;
         uint32_t len;
         void *ptr;
-        htab_t new;
+        htab_t _new;
 
         len = sizeof(struct htab);
 
@@ -100,7 +100,7 @@ htab_t htab_create(int (*compare_func)(const void *, const void *),
         if (ret)
                 GOTO(err_ret, ret);
 
-        new = (htab_t)ptr;
+        _new = (htab_t)ptr;
 
         len = sizeof(htab_entry_t) * INIT_HASH_TABLE_SIZE;
 
@@ -109,16 +109,16 @@ htab_t htab_create(int (*compare_func)(const void *, const void *),
                 GOTO(err_table, ret);
         memset(ptr, 0, len);
 
-        new->size = INIT_HASH_TABLE_SIZE;
-        new->num_of_entries = 0;
-        new->entries = (htab_entry_t *)ptr;
-        new->compare_func = compare_func;
-        new->key_func = key_func;
-        strncpy(new->name, name, MAX_NAME_LEN - 1);
+        _new->size = INIT_HASH_TABLE_SIZE;
+        _new->num_of_entries = 0;
+        _new->entries = (htab_entry_t *)ptr;
+        _new->compare_func = compare_func;
+        _new->key_func = key_func;
+        strncpy(_new->name, name, MAX_NAME_LEN - 1);
 
-        return new;
+        return _new;
 err_table:
-        ltg_free((void **)&new);
+        ltg_free((void **)&_new);
 err_ret:
         return NULL;
 }

@@ -7,7 +7,7 @@
 typedef struct {
         char name[MAX_NAME_LEN];
         size_t split;
-        int private;
+        int _private;
         int count;
         pid_t tid;
         struct list_head list;
@@ -36,14 +36,14 @@ typedef struct {
 
 typedef struct {
         size_t max;
-        slab_array_t *public;
-        slab_array_t *private;
+        slab_array_t *_public;
+        slab_array_t *_private;
 } slab_t;
 
 
 int slab_init(const char *name, slab_t **_slab, slab_array_t **_public, int min,
               int shift, uint32_t magic);
-int slab_private_init(const char *name, slab_t **_slab, slab_array_t *public, int min,
+int slab_private_init(const char *name, slab_t **_slab, slab_array_t *_public, int min,
                       int shift, uint32_t magic);
 void *slab_alloc(slab_t *slab, size_t size);
 void slab_free(slab_t *slab, void *ptr);
